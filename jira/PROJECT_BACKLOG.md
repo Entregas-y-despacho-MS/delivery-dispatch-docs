@@ -23,7 +23,7 @@ Para mantener la información ordenada y escalable, el desglose detallado de his
 ## 2. Políticas de Ingeniería, Git y Trazabilidad con Jira
 
 ### Flujo de Ramas (Feature Branch Workflow)
-Queda prohibido el uso de ramas genéricas por desarrollador. Cada incremento técnico debe aislarse en una rama propia originada desde la rama base (`main` o `develop`):
+Queda prohibido el uso de ramas genéricas por desarrollador. Cada incremento técnico debe aislarse en una rama propia originada desde la rama de integración del repositorio (`dev` en `back` y `bdd`; `develop` en `front` y `mobile`; el detalle por repositorio está en `AGENTS.md`):
 
 * **Funcionalidad nueva:** `feature/ST-XX-descripcion-corta` (o `feature/ES-XX-...` si la Historia de Usuario es unitaria y ejecutada por un solo dev).
 * **Corrección de errores:** `fix/ST-XX-descripcion-corta`.
@@ -31,12 +31,12 @@ Queda prohibido el uso de ramas genéricas por desarrollador. Cada incremento t�
 ### Formato Estándar de Commits
 Cada confirmación debe prefijarse obligatoriamente con el código de la subtarea o historia para garantizar la vinculación en Jira:
 
-* **Formato:** `ST-XX.X: Verbo en infinitivo y alcance del cambio.`
+* **Formato:** `ST-XX.X: Verbo en infinitivo y alcance del cambio.` (en `back` el mensaje es `ST-XX.X` seguido del título literal de la subtarea en Jira; en `bdd` se usan Conventional Commits).
 * **Ejemplo:** `git commit -m "ST-18.2: estructurar router protegido y sidebar administrativo"`
 
 ### Ciclo de Vida y Limpieza
 1. La subtarea pasa a **In Progress** únicamente al comenzar el desarrollo local (límite WIP: máximo 2 tareas simultáneas por dev).
-2. Al finalizar, se abre un **Pull Request (PR)** hacia la rama principal y la tarea pasa a **Code Review**.
+2. Al finalizar, se abre un **Pull Request (PR)** hacia la rama de integración del repositorio, con una descripción en Markdown (qué se hizo, cómo, pruebas, notas para quien revise), y la tarea pasa a **Code Review**.
 ### Revisiones de código y Gobernanza de Equipo
 * **Gobernanza Base (Estructura aplicada en Sprint 1):**
   * **Pardo:** Product Owner (PO).
@@ -61,7 +61,7 @@ Cada confirmación debe prefijarse obligatoriamente con el código de la subtare
 | **ES-7** | `4.0` | **Módulo de Seguimiento y Portal de Cliente** | Portal público web/móvil para rastreo de guías en tiempo real, consulta de estado y notificaciones a destinatarios. | 3 | Frontend Web / Backend |
 | **ES-8** | `5.0` | **Panel Administrativo de Coordinación y Despacho** | Módulo web del Coordinador: asignación de órdenes a repartidores, balanceo de rutas y reprogramación operativa. | 2 | Frontend Web / Backend |
 | **ES-9** | `6.0` | **Panel de Supervisión y Monitoreo en Tiempo Real** | Dashboard de torre de control: mapa interactivo con websockets, monitoreo de flotas, alertas de desvío y métricas. | 3 | Fullstack / Realtime |
-| **ES-11** | `8.0` | **Interoperabilidad con el ERP y Sistemas Externos** | Ingesta de pedidos por REST, confirmación síncrona/asíncrona con Almacén, gestión con Compras y contratos OpenAPI. | 2 | Backend Lead |
+| **ES-11** | `8.0` | **Interoperabilidad con el ERP y Sistemas Externos** | Integración asíncrona y simulada (mensajes JSON sobre Pub/Sub) con Marketplace, Almacén y Compras: ingesta de pedidos y recogidas, salida física y contratos JSON Schema. | 2 | Backend Lead |
 | **ES-10** | `7.0` | **Auditoría, Trazabilidad y Logs** | Pista de auditoría inmutable, logs centralizados de seguridad, métricas de cumplimiento y reportes forenses. | 4 | Architecture / Backend |
 
 ---
@@ -194,17 +194,18 @@ Cada confirmación debe prefijarse obligatoriamente con el código de la subtare
 ---
 
 ### ES-11 — Épica 8.0: Interoperabilidad con el ERP y Sistemas Externos
-* **Objetivo:** Automatizar el intercambio de información con sistemas legados (Almacén e Inventarios, Compras y Proveedores) mediante interfaces REST y contratos OpenAPI.
+* **Objetivo:** Automatizar el intercambio de información con sistemas legados (Almacén e Inventarios, Compras y Proveedores) mediante mensajería asíncrona (Google Cloud Pub/Sub simulado con su emulador) y contratos JSON Schema. Marketplace y Ventas se incorpora como fuente de los datos de entrega.
 * **Historias Contenidas:**
-  * `ES-72`: 8.1 Endpoint REST seguro para recibir pedidos preparados desde Almacén [ERP-01]
-  * `ES-73`: 8.2 Notificación de salida física hacia Almacén e Inventarios [ERP-02]
-  * `ES-74`: 8.3 Interfaces REST para recibir solicitudes de transporte y logística inversa desde Compras [ERP-03]
-  * `ES-75`: 8.4 Programación y gestión de recojo en proveedores hacia almacenes centrales [ERP-04]
-  * `ES-76`: 8.5 Configuración y publicación de documentación OpenAPI/Swagger para API Gateway [ERP-05]
+  * `ES-72`: 8.1 Consumo de datos de entrega de Marketplace y pedidos empacados de Almacén para consolidar órdenes de entrega [ERP-01]
+  * `ES-73`: 8.2 Publicación de la salida física de los bultos hacia Almacén e Inventarios [ERP-02]
+  * `ES-74`: 8.3 Consumo de solicitudes de recogida en proveedor enviadas por Compras [ERP-03]
+  * `ES-75`: 8.4 Programación del recojo en proveedores hacia el almacén destino [ERP-04]
+  * `ES-76`: 8.5 Catálogo de mensajes y esquemas JSON de los contratos asíncronos [ERP-05]
+  * `ES-???`: 8.6 Ejecución de la recogida en proveedor desde la app móvil: registro de cajas recibidas, incidencias por diferencias y entrega en el almacén destino [ERP-06] — *sin sprint asignado*
 * **Dependencias:**
   * **Predecesoras:** Épica 1.0 (Infraestructura y seguridad base).
   * **Sucesoras directas:** Alimenta automáticamente las órdenes de la Épica 5.0 y confirma custodia física.
-* **Criterio de Entrega (DoD):** Endpoints REST M2M documentados con OpenAPI, validados mediante pruebas de integración automáticas y tolerancia a fallos por cola de mensajes.
+* **Criterio de Entrega (DoD):** Contratos de mensajes JSON documentados con JSON Schema, consumidores y publicadores validados con pruebas de integración automáticas, simulador del ERP operativo y tolerancia a fallos mediante dead-letter y patrón outbox.
 * **Desglose Operativo:** Ver detalle en [`SPRINT_2.md`](./SPRINT_2.md).
 
 ---
